@@ -22,7 +22,7 @@ public class DataController : ControllerBase
         var stopwatch = Stopwatch.StartNew();
 
         // Call the repository and render Razor page 5 times in parallel
-        var tasks = Enumerable.Range(1, 5).Select(_ => FetchAndRenderDataAsync());
+        var tasks = Enumerable.Range(1, 100).Select(_ => FetchAndRenderDataAsync());
         var results = await Task.WhenAll(tasks);
 
         stopwatch.Stop();
