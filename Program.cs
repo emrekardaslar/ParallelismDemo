@@ -6,8 +6,7 @@ using System.Net.Http;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers();
-builder.Services.AddRazorPages();
+builder.Services.AddControllersWithViews(); // Use MVC with Views
 builder.Services.AddHttpClient(); // Register HTTP client factory
 
 var app = builder.Build();
@@ -17,7 +16,11 @@ app.UseAuthorization();
 app.UseEndpoints(endpoints =>
 {
     endpoints.MapControllers();
-    endpoints.MapRazorPages();
 });
+
+app.MapControllerRoute(
+    name: "default",
+    pattern: "{controller=Home}/{action=Index}/{id?}"
+);
 
 app.Run();

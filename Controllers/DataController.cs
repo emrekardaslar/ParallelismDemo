@@ -21,8 +21,8 @@ public class DataController : ControllerBase
     {
         var stopwatch = Stopwatch.StartNew();
 
-        // Call the repository and render Razor page 5 times in parallel
-        var tasks = Enumerable.Range(1, 100).Select(_ => FetchAndRenderDataAsync());
+        // Call the repository and render View 5 times in parallel
+        var tasks = Enumerable.Range(1, 5).Select(_ => FetchAndRenderDataAsync());
         var results = await Task.WhenAll(tasks);
 
         stopwatch.Stop();
@@ -37,12 +37,12 @@ public class DataController : ControllerBase
     private async Task<string> FetchAndRenderDataAsync()
     {
         var data = await _repository.GetDataAsync();
-        return await RenderRazorPageAsync(data);
+        return await RenderViewAsync(data);
     }
 
-    private async Task<string> RenderRazorPageAsync(string data)
+    private async Task<string> RenderViewAsync(string data)
     {
         using var httpClient = _httpClientFactory.CreateClient();
-        return await httpClient.GetStringAsync($"http://localhost:5236/MockPage?data={data}");
+        return await httpClient.GetStringAsync($"http://localhost:5236/Home/MockView?data={data}");
     }
 }
