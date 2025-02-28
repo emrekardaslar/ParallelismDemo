@@ -9,6 +9,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddRazorPages();
 builder.Services.AddHttpClient(); // Register HTTP client factory
+builder.Services.AddScoped<ScriptCollector>(); 
 
 var app = builder.Build();
 
@@ -16,8 +17,8 @@ app.UseRouting();
 app.UseAuthorization();
 app.UseEndpoints(endpoints =>
 {
-    endpoints.MapControllers();
-    endpoints.MapRazorPages();
+    _ = endpoints.MapControllers();
+    _ = endpoints.MapRazorPages();
 });
 
 app.Run();
