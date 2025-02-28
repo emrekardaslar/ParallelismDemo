@@ -1,12 +1,14 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.AspNetCore.Mvc.ViewEngines;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.AspNetCore.Mvc.ViewEngines;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Microsoft.AspNetCore.Mvc.Infrastructure; // ✅ Fixes IActionContextAccessor
+using Microsoft.AspNetCore.Mvc.ModelBinding; // ✅ Fixes ModelStateDictionary
 using System.IO;
+using System;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc.Infrastructure;
-using Microsoft.AspNetCore.Mvc.ModelBinding;
+
 
 public class PartialViewRenderer
 {
@@ -24,15 +26,28 @@ public class PartialViewRenderer
         _serviceProvider = serviceProvider;
     }
 
-    public async Task<string> RenderViewToStringAsync(PageModel pageModel, string viewName, object model)
+    public async Task<string> RenderViewToStringAsync(object pageOrController, string viewName, object model)
     {
-        var actionContext = pageModel.HttpContext.RequestServices.GetRequiredService<IActionContextAccessor>().ActionContext;
+        ActionContext actionContext;
+
+        if (pageOrController is PageModel pageModel)
+        {
+            actionContext = pageModel.HttpContext.RequestServices.GetRequiredService<IActionContextAccessor>().ActionContext;
+        }
+        else if (pageOrController is ControllerBase controller)
+        {
+            actionContext = controller.ControllerContext;
+        }
+        else
+        {
+            throw new ArgumentException("Invalid type: Expected PageModel or ControllerBase", nameof(pageOrController));
+        }
 
         var viewResult = _viewEngine.FindView(actionContext, viewName, false);
 
         if (!viewResult.Success)
         {
-            throw new InvalidOperationException($"Could not find view: {viewName}");
+            throw new InvalidOperationException($"View '{viewName}' not found.");
         }
 
         using var sw = new StringWriter();

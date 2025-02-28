@@ -15,15 +15,15 @@ public class BrochureModel : PageModel
 
     public async Task<IActionResult> OnGet()
     {
-        // Simulated dynamic content (this could be from a database or API)
+        // Fetch dynamic content (from DB, API, etc.)
         var brochureData = new BrochureViewModel
         {
             BrochureId = "123",
-            Content = "Dynamic Brochure Content from Database/API"
+            Content = "Dynamic Brochure Content"
         };
 
-        // Render the Razor Partial View with the data
-        string htmlContent = await _partialViewRenderer.RenderViewToStringAsync(this, "Shared/_BrochurePartial", brochureData);
+        // Render Brochure Partial View
+        string htmlContent = await _partialViewRenderer.RenderViewToStringAsync(this, "_BrochurePartial", brochureData);
 
         // Collect JavaScript Calls
         _scriptCollector.AppendScript("AppendFlip_v9('BCD_123', false)");

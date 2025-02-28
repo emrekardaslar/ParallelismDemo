@@ -1,20 +1,21 @@
 using Microsoft.AspNetCore.Mvc;
 using System.Diagnostics;
-using System.Linq;
-using System.Net.Http;
-using System.Text.Json;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 [ApiController]
 [Route("api/data")]
 public class DataController : ControllerBase
 {
-    private readonly MockRepository _repository = new MockRepository();
-    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly MockRepository _repository;
+    private readonly PartialViewRenderer _partialViewRenderer;
+    private readonly ScriptCollector _scriptCollector;
 
-    public DataController(IHttpClientFactory httpClientFactory)
+    public DataController(MockRepository repository, PartialViewRenderer partialViewRenderer, ScriptCollector scriptCollector)
     {
-        _httpClientFactory = httpClientFactory;
+        _repository = repository;
+        _partialViewRenderer = partialViewRenderer;
+        _scriptCollector = scriptCollector;
     }
 
     [HttpGet]
@@ -22,9 +23,8 @@ public class DataController : ControllerBase
     {
         var stopwatch = Stopwatch.StartNew();
 
-        // Fetch component data
-        var brochureTask = FetchAndRenderBrochureAsync();
-        await Task.WhenAll(brochureTask);
+        // Fetch component data and render the partial view
+        var result = await FetchAndRenderBrochureAsync();
 
         stopwatch.Stop();
 
@@ -32,8 +32,8 @@ public class DataController : ControllerBase
         {
             brochure = new
             {
-                html = brochureTask.Result.Html,
-                js = brochureTask.Result.Scripts
+                html = result.Html,
+                js = result.Scripts
             },
             TimeTakenMs = stopwatch.ElapsedMilliseconds
         });
@@ -42,23 +42,19 @@ public class DataController : ControllerBase
     private async Task<(string Html, List<string> Scripts)> FetchAndRenderBrochureAsync()
     {
         var data = await _repository.GetDataAsync();
-        return await RenderRazorPageAsync("Brochure", data);
-    }
 
-    private async Task<(string Html, List<string> Scripts)> RenderRazorPageAsync(string component, string data)
-    {
-        using var httpClient = _httpClientFactory.CreateClient();
-        var response = await httpClient.GetStringAsync($"http://localhost:5236/{component}");
+        var brochureData = new BrochureViewModel
+        {
+            BrochureId = "123",
+            Content = "Dynamic Brochure Content"
+        };
 
-        // Deserialize JSON response from Razor Page
-        var result = JsonSerializer.Deserialize<RazorResponse>(response, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        // Render Partial View - Pass 'this' as ControllerBase
+        string htmlContent = await _partialViewRenderer.RenderViewToStringAsync(this, "_BrochurePartial", brochureData);
 
-        return (result?.Html ?? "", result?.Scripts ?? new List<string>());
-    }
+        _scriptCollector.AppendScript("AppendFlip_v9('BCD_123', false)");
+        _scriptCollector.AppendScript("window.LL.Init('BCD_123', 'src', {hheiha:1});");
 
-    private class RazorResponse
-    {
-        public string Html { get; set; }
-        public List<string> Scripts { get; set; }
+        return (htmlContent, _scriptCollector.GetScripts().ToList());
     }
 }
