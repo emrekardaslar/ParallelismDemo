@@ -41,20 +41,27 @@ public class DataController : ControllerBase
 
     private async Task<(string Html, List<string> Scripts)> FetchAndRenderBrochureAsync()
     {
-        var data = await _repository.GetDataAsync();
+        // Start repository data fetch asynchronously
+        var dataTask = _repository.GetDataAsync();
 
+        // Prepare the view model (No need to wait for repository data)
         var brochureData = new BrochureViewModel
         {
             BrochureId = "123",
             Content = "Dynamic Brochure Content"
         };
 
-        // Render Partial View - Pass 'this' as ControllerBase
-        string htmlContent = await _partialViewRenderer.RenderViewToStringAsync(this, "_BrochurePartial", brochureData);
+        // Start rendering the partial view asynchronously
+        var renderTask = _partialViewRenderer.RenderViewToStringAsync(this, "_BrochurePartial", brochureData);
 
+        // Wait for both tasks to complete in parallel
+        await Task.WhenAll(dataTask, renderTask);
+
+        // Collect JavaScript Calls
         _scriptCollector.AppendScript("AppendFlip_v9('BCD_123', false)");
         _scriptCollector.AppendScript("window.LL.Init('BCD_123', 'src', {hheiha:1});");
 
-        return (htmlContent, _scriptCollector.GetScripts().ToList());
+        return (renderTask.Result, _scriptCollector.GetScripts().ToList());
     }
+
 }
