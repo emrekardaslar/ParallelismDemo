@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc.ModelBinding;
 using System.IO;
 using System;
 using System.Threading.Tasks;
+using System.Text.RegularExpressions;
 
 
 public class PartialViewRenderer
@@ -61,6 +62,23 @@ public class PartialViewRenderer
         );
 
         await viewResult.View.RenderAsync(viewContext);
-        return sw.ToString();
+        string renderedHtml = sw.ToString();
+        return MinifyHtml(renderedHtml);
+    }
+
+    private string MinifyHtml(string html)
+    {
+        if (string.IsNullOrWhiteSpace(html)) return html;
+
+        // Remove whitespace between tags
+        html = Regex.Replace(html, @">\s+<", "><");
+
+        // Remove extra line breaks
+        html = Regex.Replace(html, @"\n\s*", "");
+
+        // Remove multiple spaces
+        html = Regex.Replace(html, @"\s{2,}", " ");
+
+        return html.Trim();
     }
 }
