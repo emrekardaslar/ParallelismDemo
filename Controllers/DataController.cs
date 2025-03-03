@@ -50,6 +50,7 @@ public class DataController : ControllerBase
             BrochureId = "123",
             Content = "Dynamic Brochure Content"
         };
+        string brochureDivId = $"BCD_{brochureData.BrochureId}";
 
         // Start rendering the partial view asynchronously
         var renderTask = _partialViewRenderer.RenderViewToStringAsync(this, "_BrochurePartial", brochureData);
@@ -58,8 +59,8 @@ public class DataController : ControllerBase
         await Task.WhenAll(dataTask, renderTask);
 
         // Collect JavaScript Calls
-        _scriptCollector.AppendScript("AppendFlip_v9('BCD_123', false)");
-        _scriptCollector.AppendScript("window.LL.Init('BCD_123', 'src', {hheiha:1});");
+        _scriptCollector.AppendScript($"AppendFlip_v9('{brochureDivId}', false)");
+        _scriptCollector.AppendScript($"window.LL.Init('{brochureDivId}', 'src', {{hheiha:1}});");
 
         return (renderTask.Result, _scriptCollector.GetScripts().ToList());
     }
