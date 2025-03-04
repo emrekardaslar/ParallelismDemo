@@ -1,19 +1,21 @@
 using Microsoft.AspNetCore.Mvc;
 using System.Diagnostics;
-using System.Linq;
-using System.Net.Http;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 [ApiController]
 [Route("api/data")]
 public class DataController : ControllerBase
 {
-    private readonly MockRepository _repository = new MockRepository();
-    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly MockRepository _repository;
+    private readonly PartialViewRenderer _partialViewRenderer;
+    private readonly ScriptCollector _scriptCollector;
 
-    public DataController(IHttpClientFactory httpClientFactory)
+    public DataController(MockRepository repository, PartialViewRenderer partialViewRenderer, ScriptCollector scriptCollector)
     {
-        _httpClientFactory = httpClientFactory;
+        _repository = repository;
+        _partialViewRenderer = partialViewRenderer;
+        _scriptCollector = scriptCollector;
     }
 
     [HttpGet]
@@ -21,28 +23,46 @@ public class DataController : ControllerBase
     {
         var stopwatch = Stopwatch.StartNew();
 
-        // Call the repository and render Razor page 5 times in parallel
-        var tasks = Enumerable.Range(1, 100).Select(_ => FetchAndRenderDataAsync());
-        var results = await Task.WhenAll(tasks);
+        // Fetch component data and render the partial view
+        var result = await FetchAndRenderBrochureAsync();
 
         stopwatch.Stop();
 
         return Ok(new
         {
-            Results = results,
+            brochure = new
+            {
+                html = result.Html,
+                js = result.Scripts
+            },
             TimeTakenMs = stopwatch.ElapsedMilliseconds
         });
     }
 
-    private async Task<string> FetchAndRenderDataAsync()
+    private async Task<(string Html, List<string> Scripts)> FetchAndRenderBrochureAsync()
     {
-        var data = await _repository.GetDataAsync();
-        return await RenderRazorPageAsync(data);
+        // Start repository data fetch asynchronously
+        var dataTask = _repository.GetDataAsync();
+
+        // Prepare the view model (No need to wait for repository data)
+        var brochureData = new BrochureViewModel
+        {
+            BrochureId = "123",
+            Content = "Dynamic Brochure Content"
+        };
+        string brochureDivId = $"BCD_{brochureData.BrochureId}";
+
+        // Start rendering the partial view asynchronously
+        var renderTask = _partialViewRenderer.RenderViewToStringAsync(this, "_BrochurePartial", brochureData);
+
+        // Wait for both tasks to complete in parallel
+        await Task.WhenAll(dataTask, renderTask);
+
+        // Collect JavaScript Calls
+        _scriptCollector.AppendScript($"AppendFlip_v9('{brochureDivId}', false)");
+        _scriptCollector.AppendScript($"window.LL.Init('{brochureDivId}', 'src', {{hheiha:1}});");
+
+        return (renderTask.Result, _scriptCollector.GetScripts().ToList());
     }
 
-    private async Task<string> RenderRazorPageAsync(string data)
-    {
-        using var httpClient = _httpClientFactory.CreateClient();
-        return await httpClient.GetStringAsync($"http://localhost:5236/MockPage?data={data}");
-    }
 }
